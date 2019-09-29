@@ -46,7 +46,7 @@ module.exports = (_, app) => {
       opt.ignore = opt.blackUrls;
     }
     opt.matching = createMatch(opt);
-
+    //将lib下middleware进行合并组装，利用koa-compose
     const fn = require(path.join(__dirname, '../../lib/middlewares', middlewareName))(opt, app);
     middlewares.push(fn);
     app.coreLogger.info('[egg-security] use %s middleware', middlewareName);

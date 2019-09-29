@@ -28,6 +28,7 @@ function findToken(obj, keys) {
 }
 
 module.exports = {
+  // 返回私有变量
   get securityOptions() {
     if (!this[SECURITY_OPTIONS]) {
       this[SECURITY_OPTIONS] = {};
@@ -61,6 +62,7 @@ module.exports = {
    * @return {String} csrf token
    * @public
    */
+  // ctx.csrf的token，基于csrf模块来创建
   get csrf() {
     // csrfSecret can be rotate, use NEW_CSRF_SECRET first
     const secret = this[NEW_CSRF_SECRET] || this[CSRF_SECRET];

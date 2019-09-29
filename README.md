@@ -1,28 +1,103 @@
 # egg-security
 
 Security plugin in egg
-
-[![NPM version][npm-image]][npm-url]
-[![build status][travis-image]][travis-url]
-[![Test coverage][codecov-image]][codecov-url]
-[![David deps][david-image]][david-url]
-[![Known Vulnerabilities][snyk-image]][snyk-url]
-[![npm download][download-image]][download-url]
-
-[npm-image]: https://img.shields.io/npm/v/egg-security.svg?style=flat-square
-[npm-url]: https://npmjs.org/package/egg-security
-[travis-image]: https://img.shields.io/travis/eggjs/egg-security.svg?style=flat-square
-[travis-url]: https://travis-ci.org/eggjs/egg-security
-[codecov-image]: https://codecov.io/gh/eggjs/egg-security/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/eggjs/egg-security
-[david-image]: https://img.shields.io/david/eggjs/egg-security.svg?style=flat-square
-[david-url]: https://david-dm.org/eggjs/egg-security
-[snyk-image]: https://snyk.io/test/npm/egg-security/badge.svg?style=flat-square
-[snyk-url]: https://snyk.io/test/npm/egg-security
-[download-image]: https://img.shields.io/npm/dm/egg-security.svg?style=flat-square
-[download-url]: https://npmjs.org/package/egg-security
-
 Egg's default security plugin, generally no need to configure.
+
+# 源码分析
+
+提供一系列转义的helper方法，和一系列安全的中间件，加上各自响应头。
+
+## 文件结构
+
+``` bash
+├── agent.js
+├── app
+|  ├── extend
+|  |  ├── agent.js - 提供safeCurl方法，基于lib/extend/safe_curl.js
+|  |  ├── application.js - 给app上提供几个方法injectCsrf，injectNonce，injectHijackingDefense和safeCurl，基于lib/extend/safe_curl.js
+|  |  ├── context.js - 挂载csrf属性和assertCsrf方法来获取和校验token。基于csrf模块。
+|  |  └── helper.js - 将lib下的helper批量暴露
+|  └── middleware
+|     └── securities.js - 将lib下middleware进行合并组装，利用koa-compose
+├── app.js - 首先检查csrf参数合法性，调用lib/safe_redirect.js。
+├── config
+|  ├── config.default.js - 默认参数，全部开启。配置有个csrf，xframe，hsts等等
+|  └── config.local.js
+├── index.js - 对外暴露各个中间件和util
+├── lib
+|  ├── extend
+|  |  └── safe_curl.js - 封装safeCurl方法，对config.ssrf处理后带上参数调用curl。
+|  ├── helper
+|  |  ├── cliFilter.js - 提供cliFilter方法，过滤掉非正常字符
+|  |  ├── escape.js - 直接暴露escape-html模块
+|  |  ├── index.js - 将helper下所有内容暴露出去
+|  |  ├── shtml.js - 提供shtml方法，判断href和src内容是否在白名单。最后基于xss模块过滤。
+|  |  ├── sjs.js - 提供sjs方法，对js内容进行转义，防xss。
+|  |  ├── sjson.js - 提供sjson方法，对json内容进行转义，所有key为字符串则走sjs方法。
+|  |  ├── spath.js - 提供spath方法，针对路径
+|  |  └── surl.js - 提供surl方法，解析url，判断白名单。
+|  ├── middlewares
+|  |  ├── csp.js - 根据配置设置响应头content-security-policy，兼容ie
+|  |  ├── csrf.js - 对csrf的token在请求阶段进行校验，基于app/extend/context.js挂载在ctx上的和csrf有关的方法
+|  |  ├── dta.js - 请求阶段判断ctx.path是否是安全的路径，不带../等。
+|  |  ├── hsts.js - 响应阶段，设置Strict-Transport-Security头。告诉浏览器只能通过HTTPS访问当前资源，而不是HTTP
+|  |  ├── methodnoallow.js - 请求时拦截不允许的http method类型
+|  |  ├── noopen.js - 设置响应头x-download-options，用于指定IE 8以上版本的用户不打开文件而直接保存文件。在下载对话框中不显示“打开”选项。
+|  |  ├── nosniff.js - 设置响应体x-content-type-options，用于提示客户端一定要遵循在 Content-Type 首部中对  MIME 类型 的设定。
+|  |  ├── referrerPolicy.js - 设置响应头referrer-policy
+|  |  ├── xframe.js - 设置响应头x-frame-options
+|  |  └── xssProtection.js - 设置响应头x-xss-protection，当检测到跨站脚本攻击 (XSS)时，浏览器将停止加载页面。
+|  ├── safe_redirect.js - 将原有的redirect挂载到unsafeRedirect，基于配置白名单提供新的redirect方法。
+|  └── utils.js
+```
+
+## 外部模块依赖
+
+![](./graphviz/module.svg)
+
+## 逐个文件分析
+
+### index.js
+
+对外暴露各个中间件和util
+
+### app.js
+
+首先检查csrf参数合法性。
+
+调用lib/safe_redirect.js。
+
+### agent.js
+
+简单format下配置
+
+### lib/safe_redirect.js
+
+将原有的app.response.redirect挂载到app.response.unsafeRedirect上。
+
+封装新的redirect方法，对配置中的白名单进行过滤和校验。
+
+
+### app/middleware/securities.js
+
+将lib下middleware进行合并组装，利用koa-compose
+
+### app/extend/context.js
+
+挂载一些属性和方法到ctx。
+
+csrf属性，基于csrf模块创建token并返回。
+
+assertCsrf方法，用来判断csrf是否合法。
+
+
+
+
+
+
+
+
+
 
 ## Install
 
